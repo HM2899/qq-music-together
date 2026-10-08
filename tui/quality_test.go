@@ -1,12 +1,122 @@
 package main
 
 import (
+	"encoding/json"
+	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 )
+
+// 两个版本的 loadfile 参数表来自 mpv player/command.c：0.38 新增 index，
+// 但 options 的名字不变。假 IPC 校验实际线上 JSON，而非只测参数构造函数。
+func TestMpvLoadAtProtocols(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"mpv-0.37", []string{"url", "flags", "options"}},
+		{"mpv-0.38+", []string{"url", "flags", "index", "options"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client, server := net.Pipe()
+			m := &Mpv{
+				conn: client, pending: make(map[int]chan ipcResp),
+				closed: make(chan struct{}), Ended: make(chan MpvEnd, 4),
+			}
+			// 假 IPC 没有子进程，不需要 readLoop 收尸。
+			m.waitOnce.Do(func() {})
+			go m.readLoop()
+			done := make(chan []any, 1)
+			go func() {
+				defer server.Close()
+				var commands []any
+				defer func() { done <- commands }()
+				dec, enc := json.NewDecoder(server), json.NewEncoder(server)
+				for {
+					var req struct {
+						Command any `json:"command"`
+						ID      int `json:"request_id"`
+					}
+					if err := dec.Decode(&req); err != nil {
+						return
+					}
+					commands = append(commands, req.Command)
+					reply := "success"
+					// 按版本签名解码位置参数或命名参数。
+					var args map[string]any
+					switch cmd := req.Command.(type) {
+					case []any:
+						if len(cmd) > 0 && cmd[0] == "loadfile" {
+							args = make(map[string]any)
+							if len(cmd)-1 > len(tc.args) {
+								reply = "invalid parameter"
+							} else {
+								for i, value := range cmd[1:] {
+									args[tc.args[i]] = value
+								}
+							}
+						}
+					case map[string]any:
+						if cmd["name"] == "loadfile" {
+							args = cmd
+							for key := range cmd {
+								known := key == "name"
+								for _, name := range tc.args {
+									known = known || key == name
+								}
+								if !known {
+									reply = "invalid parameter"
+								}
+							}
+						}
+					}
+					if args != nil && args["url"] == "reject.mp3" {
+						reply = "invalid parameter"
+					}
+					if err := enc.Encode(ipcResp{RequestID: req.ID, Error: reply}); err != nil {
+						return
+					}
+				}
+			}()
+			t.Cleanup(func() {
+				m.Close()
+				<-m.closed
+			})
+
+			url := "https://example.invalid/音乐 a.mp3?x=1&y=2"
+			if err := m.LoadAt(url, 4.25); err != nil {
+				t.Errorf("LoadAt: %v", err)
+			}
+			if err := m.LoadAt("reject.mp3", 0); err == nil || !strings.Contains(err.Error(), "invalid parameter") {
+				t.Errorf("应原样返回命令失败，实际 %v", err)
+			}
+			if err := m.Load("next.mp3"); err != nil {
+				t.Errorf("Load: %v", err)
+			}
+			if err := m.SetPause(false); err != nil {
+				t.Errorf("SetPause: %v", err)
+			}
+			if m.LoadSeq() != 3 {
+				t.Errorf("每次载入尝试只更新一次代际，实际 %d", m.LoadSeq())
+			}
+			m.Close()
+			got := <-done
+			want := []any{
+				map[string]any{"name": "loadfile", "url": url, "flags": "replace", "options": "start=4.250"},
+				map[string]any{"name": "loadfile", "url": "reject.mp3", "flags": "replace", "options": "start=0.000"},
+				[]any{"loadfile", "next.mp3", "replace"},
+				[]any{"set_property", "pause", false},
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("命令内容/顺序不符（失败也不得重试或补 seek）\ngot  %#v\nwant %#v", got, want)
+			}
+		})
+	}
+}
 
 // LoadAt：mpv 从指定位置开始放（切音质时接着原位置的基础）。
 func TestMpvLoadAt(t *testing.T) {

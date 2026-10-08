@@ -187,6 +187,11 @@ func (m *Mpv) LoadSeq() uint64 { return m.loadSeq.Load() }
 
 // call 发一条 IPC 命令并等响应。
 func (m *Mpv) call(args ...any) (json.RawMessage, error) {
+	return m.callCommand(args)
+}
+
+// callCommand 同步发送位置参数数组或命名参数对象，共用同一套 IPC 请求/响应逻辑。
+func (m *Mpv) callCommand(command any) (json.RawMessage, error) {
 	m.mu.Lock()
 	m.reqID++
 	id := m.reqID
@@ -195,7 +200,7 @@ func (m *Mpv) call(args ...any) (json.RawMessage, error) {
 	m.mu.Unlock()
 
 	payload, err := json.Marshal(map[string]any{
-		"command":    args,
+		"command":    command,
 		"request_id": id,
 	})
 	if err != nil {
@@ -236,9 +241,15 @@ func (m *Mpv) Load(url string) error {
 }
 
 // LoadAt 载入并从 start 秒开始放（切音质时接着原位置）。
-// mpv 0.38 起 loadfile 的第三个参数是插入位置 index，选项在第四个；replace 模式下 index 填 -1。
+// mpv 0.38 在 options 前插入了 index 参数。新旧版都支持命名参数，直接按
+// options 传入起点；不传 index（新版默认 -1），无需猜版本或失败后重试载入。
 func (m *Mpv) LoadAt(url string, start float64) error {
-	_, err := m.call("loadfile", url, "replace", -1, fmt.Sprintf("start=%.3f", start))
+	_, err := m.callCommand(map[string]any{
+		"name":    "loadfile",
+		"url":     url,
+		"flags":   "replace",
+		"options": fmt.Sprintf("start=%.3f", start),
+	})
 	m.loadSeq.Add(1)
 	return err
 }

@@ -1,0 +1,99 @@
+name: 检查与 Linux 打包
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      container_smoke:
+        description: '在临时容器安装测试（Alpine 使用 --allow-untrusted）'
+        type: boolean
+        default: false
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 离线测试
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: tui/go.mod
+          cache-dependency-path: tui/go.sum
+      - name: 安装测试依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mpv ffmpeg python3 dbus gcc
+          for cmd in mpv ffmpeg python3 dbus-daemon gcc; do command -v "$cmd"; done
+      - name: 网页与 Python 检查
+        run: |
+          node --check app.js
+          python3 -I -c 'import ast,pathlib; ast.parse(pathlib.Path("tui/backend/qqmusic_api.py").read_text())'
+          python3 -I -m unittest discover -s tui/backend -p 'test_*.py'
+      - name: Go 检查与测试
+        working-directory: tui
+        env:
+          CGO_ENABLED: '1'
+        run: |
+          go vet -buildvcs=false ./...
+          go test -buildvcs=false -count=1 -timeout 300s ./...
+          go test -buildvcs=false -race -count=1 -timeout 300s ./...
+
+  packages:
+    name: Linux ${{ matrix.arch }} 软件包
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: tui/go.mod
+          cache-dependency-path: tui/go.sum
+      - name: 安装打包检查依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools binutils zstd python3
+      - name: 安装固定版本打包工具
+        run: bash packaging/install-tools.sh "$RUNNER_TEMP/nfpm"
+      - name: 构建与检查
+        env:
+          NFPM: ${{ runner.temp }}/nfpm/nfpm
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: |
+          bash packaging/build.sh --arch "$BUILD_ARCH" --version 0.0.0 --commit "$GITHUB_SHA" --output dist
+          bash packaging/checksums.sh dist
+          bash packaging/verify.sh dist
+      - name: 安装包冒烟测试
+        if: github.event_name == 'workflow_dispatch' && inputs.container_smoke == true
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: bash packaging/smoke-containers.sh dist "$BUILD_ARCH"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: linux-${{ matrix.arch }}-preview
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7

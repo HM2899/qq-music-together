@@ -1,0 +1,38 @@
+# 模板，不可直接发布到 AUR：替换所有 @...@ 字段，并用真实发行
+# SHA256SUMS 中的源码包校验值替换 @SOURCE_SHA256@；不使用 SKIP。
+pkgname=qqmusic-tui
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc='QQ 音乐终端播放器，附带 Python 标准库 API 后端'
+arch=('x86_64' 'aarch64')
+url='@REPOSITORY_URL@'
+license=('GPL-3.0-only')
+depends=('mpv' 'python' 'ca-certificates')
+makedepends=('go>=1.27' 'go<1.28')
+optdepends=('dbus: MPRIS 桌面集成' 'xdg-utils: 打开浏览器')
+source=("${url}/releases/download/v${pkgver}/qqmusic-together_${pkgver}_source.tar.gz")
+sha256sums=('@SOURCE_SHA256@')
+# 用对应 tag 的真实提交哈希替换，不把版本号冒充提交。
+_commit='@COMMIT@'
+
+prepare() {
+  cd "$srcdir/qqmusic-together-$pkgver/tui"
+  go mod download all
+}
+
+build() {
+  cd "$srcdir/qqmusic-together-$pkgver/tui"
+  CGO_ENABLED=0 GOTOOLCHAIN=local go build -mod=readonly -trimpath -buildvcs=false \
+    -ldflags "-s -w -X main.version=$pkgver -X main.commit=$_commit" -o qqmusic-tui .
+}
+
+package() {
+  local root="$srcdir/qqmusic-together-$pkgver"
+  local licenses="$pkgdir/usr/share/licenses/$pkgname"
+  install -Dm755 "$root/tui/qqmusic-tui" "$pkgdir/usr/bin/$pkgname"
+  install -Dm644 "$root/tui/backend/qqmusic_api.py" "$pkgdir/usr/share/$pkgname/backend/qqmusic_api.py"
+  install -Dm644 "$root/LICENSE" "$licenses/LICENSE"
+  install -m644 "$root/THIRD_PARTY_NOTICES.md" "$licenses/"
+  cp -R "$root/licenses" "$licenses/third-party"
+  CGO_ENABLED=0 GOTOOLCHAIN=local python -I "$root/packaging/licenses.py" "$root" "$licenses"
+}

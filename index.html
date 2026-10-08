@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QQ音乐 - 一起听 (Listen Together) 尊享版</title>
+    <!-- Modern web font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Main stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Lucide icons for ultra-clean UI icons -->
+    <script src="https://unpkg.com/lucide@0.468.0"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">
+                    <div class="logo-inner"></div>
+                </div>
+                <h2>QQ音乐</h2>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="menu-group">
+                    <h3>在线音乐</h3>
+                    <a href="#" class="nav-item active" id="nav-recommend">
+                        <i data-lucide="music-4"></i>
+                        <span>为你推荐</span>
+                    </a>
+                    <a href="#" class="nav-item" id="nav-radio">
+                        <i data-lucide="radio"></i>
+                        <span>音乐电台</span>
+                    </a>
+                </div>
+                
+                <div class="menu-group">
+                    <h3>我的音乐</h3>
+                    <a href="#" class="nav-item">
+                        <i data-lucide="heart"></i>
+                        <span>我喜欢</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <i data-lucide="folder-heart"></i>
+                        <span>本地与下载</span>
+                    </a>
+                </div>
+
+                <div class="menu-group">
+                    <h3>互动功能</h3>
+                    <a href="#" class="nav-item active-room-pulse" id="nav-together-btn">
+                        <i data-lucide="users-2"></i>
+                        <span>一起听房</span>
+                        <span class="live-dot"></span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="user-profile-summary">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=HostUser" alt="Avatar" class="avatar vip-border">
+                <div class="user-info">
+                    <div class="name-badge">
+                        <span class="username">音乐发烧友</span>
+                        <span class="vip-tag">绿钻VIP</span>
+                    </div>
+                    <span class="user-status">在线</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Application Area -->
+        <main class="main-content">
+            <!-- Header Search and Tools -->
+            <header class="main-header">
+                <div class="search-bar-container">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" placeholder="搜索歌曲、歌手、专辑..." id="song-search">
+                </div>
+                <div class="header-actions">
+                    <button class="action-btn" id="sound-effect-toggle" title="智能音效优化">
+                        <i data-lucide="sparkles"></i>
+                        <span>智能音效: 已开启</span>
+                    </button>
+                    <div class="status-indicator">
+                        <i data-lucide="shield-check" class="secure-icon"></i>
+                        <span>QQ音乐正版授信</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Workspace Panels -->
+            <div class="content-body">
+                <!-- Music Player View (Active when song is playing) -->
+                <div class="player-view-container" id="player-view">
+                    <!-- Left: Disc & Visualizer -->
+                    <div class="player-left">
+                        <div class="vinyl-container">
+                            <div class="tonearm" id="tonearm"></div>
+                            <div class="vinyl-record" id="vinyl-record">
+                                <img src="assets/lofi.jpg" alt="Cover" class="album-cover-vinyl" id="vinyl-cover">
+                                <div class="vinyl-center"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Canvas for Audio Visualizer -->
+                        <div class="visualizer-wrapper">
+                            <span class="visualizer-label"><i data-lucide="audio-lines"></i> 智能音频声浪</span>
+                            <canvas id="visualizer-canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Right: Title, Info, Lyrics -->
+                    <div class="player-right">
+                        <div class="song-meta-header">
+                            <h1 id="player-song-title">Midnight Groove</h1>
+                            <div class="song-sub-info">
+                                <span id="player-song-artist">Nightowls</span>
+                                <span class="divider">•</span>
+                                <span id="player-song-album">Lofi Chill Beats</span>
+                                <span class="hq-badge">HQ</span>
+                            </div>
+                        </div>
+
+                        <!-- Lyrics Scroll Container -->
+                        <div class="lyrics-container" id="lyrics-scroll">
+                            <div class="lyrics-wrapper" id="lyrics-wrapper">
+                                <!-- Dynamic Lyrics inserted here -->
+                                <p class="lyric-line placeholder">正在加载歌词...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Side: Listen Together Panel (一起听) -->
+        <aside class="together-panel active" id="together-panel">
+            <div class="panel-header">
+                <div class="title-with-badge">
+                    <h2>一起听房间</h2>
+                    <span class="room-status-badge inactive" id="room-status-badge">未建房</span>
+                </div>
+                <button class="close-panel-btn" id="toggle-panel-sidebar" title="收起面板">
+                    <i data-lucide="chevron-right"></i>
+                </button>
+            </div>
+
+            <!-- Pre-room State (Build Room / Join Room) -->
+            <div class="room-setup-view" id="room-setup-view">
+                <div class="setup-icon-box">
+                    <i data-lucide="headset" class="setup-icon animate-pulse"></i>
+                </div>
+                <h3>音乐，因分享而共鸣</h3>
+                <p class="setup-description">创建一个专属“一起听”房间，或者输入好友的房间码，与QQ音乐正版用户实时同步听歌、实时畅聊互动。</p>
+                
+                <div class="setup-actions">
+                    <button class="btn btn-primary" id="btn-create-room">
+                        <i data-lucide="plus-circle"></i>
+                        <span>创建房间</span>
+                    </button>
+                    
+                    <div class="join-divider">
+                        <span>或者加入他人房间</span>
+                    </div>
+                    
+                    <div class="join-input-group">
+                        <input type="text" placeholder="输入 6 位房间码..." id="input-room-code">
+                        <button class="btn btn-secondary" id="btn-join-room">加入</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Room State -->
+            <div class="room-active-view hidden" id="room-active-view">
+                <div class="room-info-card">
+                    <div class="room-meta">
+                        <span class="room-code-label">房间号</span>
+                        <div class="room-code-container">
+                            <span class="room-code-num" id="active-room-code">------</span>
+                            <button class="copy-code-btn" id="btn-copy-code" title="复制房间链接">
+                                <i data-lucide="copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="synced-shield">
+                        <i data-lucide="shield-check"></i>
+                        <span>正版同步监听中</span>
+                    </div>
+                </div>
+
+                <!-- Joined Users List -->
+                <div class="listeners-section">
+                    <div class="section-title">
+                        <span>听众成员 (<span id="listener-count">1</span>)</span>
+                        <span class="host-badge-indicator">房主拥有切歌权</span>
+                    </div>
+                    
+                    <div class="listeners-list" id="listeners-list">
+                        <!-- User items are dynamically rendered -->
+                        <div class="listener-item host">
+                            <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=HostUser" alt="Avatar" class="avatar">
+                            <div class="listener-details">
+                                <div class="listener-name-row">
+                                    <span class="listener-name">音乐发烧友 (你)</span>
+                                    <span class="role-badge">房主</span>
+                                </div>
+                                <span class="listener-status-desc">正在播放歌曲</span>
+                            </div>
+                            <div class="vip-status-check">
+                                <i data-lucide="shield" class="vip-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat & Reaction Section -->
+                <div class="chat-section">
+                    <div class="section-title">
+                        <span>房间互动</span>
+                    </div>
+                    
+                    <!-- Chat box history -->
+                    <div class="chat-box" id="chat-messages-box">
+                        <div class="chat-system-msg">
+                            房间创建成功！点击上方复制按钮，分享给好友一起听吧。
+                        </div>
+                    </div>
+
+                    <!-- Audio-Soundboard and Reaction Panel -->
+                    <div class="interaction-tools">
+                        <div class="reaction-buttons">
+                            <button class="react-btn" data-emoji="❤️" title="点赞红心">
+                                <span class="emoji-icon">❤️</span>
+                                <span class="btn-label">喜欢</span>
+                            </button>
+                            <button class="react-btn" data-emoji="🔥" title="太燥了">
+                                <span class="emoji-icon">🔥</span>
+                                <span class="btn-label">燥起来</span>
+                            </button>
+                            <button class="react-btn" data-emoji="👍" title="点赞">
+                                <span class="emoji-icon">👍</span>
+                                <span class="btn-label">好听</span>
+                            </button>
+                            <button class="react-btn" data-emoji="😭" title="感动戳中">
+                                <span class="emoji-icon">😭</span>
+                                <span class="btn-label">被戳中</span>
+                            </button>
+                        </div>
+
+                        <!-- Text Input Form -->
+                        <form class="chat-input-form" id="chat-send-form">
+                            <input type="text" placeholder="说点什么..." id="chat-text-input" autocomplete="off">
+                            <button type="submit" class="send-message-btn" title="发送消息">
+                                <i data-lucide="send"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="room-footer-actions">
+                    <button class="btn btn-danger-outline" id="btn-leave-room">
+                        <i data-lucide="log-out"></i>
+                        <span>退出一起听</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Bottom Playback Controller Bar -->
+    <footer class="playback-bar">
+        <!-- Song Details (Left) -->
+        <div class="playback-song-details">
+            <img src="assets/lofi.jpg" alt="Cover" class="playback-album-thumb" id="bar-cover">
+            <div class="playback-song-info">
+                <div class="playback-title-row">
+                    <span class="playback-song-title" id="bar-title">Midnight Groove</span>
+                    <i data-lucide="heart" class="favorite-heart-btn" id="btn-favorite" title="添加到我喜欢"></i>
+                </div>
+                <span class="playback-song-artist" id="bar-artist">Nightowls</span>
+            </div>
+        </div>
+
+        <!-- Player Main Control Panel (Center) -->
+        <div class="playback-center-controls">
+            <!-- Buttons -->
+            <div class="playback-buttons">
+                <button class="control-btn" id="btn-shuffle" title="随机播放">
+                    <i data-lucide="shuffle"></i>
+                </button>
+                <button class="control-btn" id="btn-prev" title="上一首">
+                    <i data-lucide="skip-back"></i>
+                </button>
+                <button class="control-btn play-pause-btn" id="btn-play-pause" title="播放/暂停">
+                    <i data-lucide="play" class="play-icon"></i>
+                    <i data-lucide="pause" class="pause-icon hidden"></i>
+                </button>
+                <button class="control-btn" id="btn-next" title="下一首">
+                    <i data-lucide="skip-forward"></i>
+                </button>
+                <button class="control-btn" id="btn-loop" title="单曲循环 / 列表循环">
+                    <i data-lucide="repeat"></i>
+                </button>
+            </div>
+            
+            <!-- Timeline Progress Scrubber -->
+            <div class="playback-progress-container">
+                <span class="time-elapsed" id="time-elapsed">00:00</span>
+                <div class="progress-bar-wrapper" id="progress-bar-wrapper">
+                    <div class="progress-bar-rail"></div>
+                    <div class="progress-bar-fill" id="progress-bar-fill"></div>
+                    <div class="progress-handle" id="progress-handle"></div>
+                </div>
+                <span class="time-total" id="time-total">00:00</span>
+            </div>
+        </div>
+
+        <!-- Extra controls (Right) -->
+        <div class="playback-right-controls">
+            <button class="control-btn highlight-active" id="btn-toggle-lyrics" title="歌词开关">
+                <span class="text-icon">词</span>
+            </button>
+            
+            <!-- Listen Together Quick Button -->
+            <button class="control-btn" id="btn-bar-together" title="一起听房间状态">
+                <i data-lucide="users-2"></i>
+                <span class="together-badge-indicator hidden" id="together-badge-indicator"></span>
+            </button>
+            
+            <div class="volume-control">
+                <button class="control-btn" id="btn-mute-toggle" title="静音">
+                    <i data-lucide="volume-2" id="volume-icon"></i>
+                </button>
+                <div class="progress-bar-wrapper volume-slider-wrapper" id="volume-slider-wrapper">
+                    <div class="progress-bar-rail"></div>
+                    <div class="progress-bar-fill" id="volume-bar-fill" style="width: 70%;"></div>
+                    <div class="progress-handle" id="volume-handle" style="left: 70%;"></div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Invite Share Modal -->
+    <div class="modal-overlay hidden" id="share-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>分享“一起听”邀请</h3>
+                <button class="close-modal-btn" id="btn-close-share-modal">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="share-instructions">将以下邀请码或分享链接发给QQ音乐正版用户，对方即可加入你的房间，共同实时享受当前音乐！</p>
+                
+                <div class="share-code-box">
+                    <span class="share-label">专属邀请房间码</span>
+                    <h2 class="share-big-code" id="share-modal-code">------</h2>
+                </div>
+
+                <div class="share-url-container">
+                    <input type="text" readonly id="share-modal-link" value="https://y.qq.com/listen-together?room=123456">
+                    <button class="btn btn-primary" id="btn-copy-share-link">
+                        <i data-lucide="copy"></i>
+                        <span>复制链接</span>
+                    </button>
+                </div>
+
+                <div class="share-qr-section">
+                    <div class="qr-code-placeholder">
+                        <div class="qr-mock-code">
+                            <div class="qr-square qr-tl"></div>
+                            <div class="qr-square qr-tr"></div>
+                            <div class="qr-square qr-bl"></div>
+                            <div class="qr-random-dots"></div>
+                        </div>
+                    </div>
+                    <span>微信/QQ 扫一扫加入一起听</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating reactions container (For overlaying animation) -->
+    <div class="floating-reactions-overlay" id="floating-reactions-overlay"></div>
+
+    <!-- Background blurred album art behind the player for immersive effect -->
+    <div class="bg-immersive-ambient" id="immersive-bg"></div>
+
+    <!-- Embedded audio element (will be controlled via JS) -->
+    <audio id="main-audio" crossorigin="anonymous"></audio>
+    
+    <!-- Application script -->
+    <script src="app.js"></script>
+</body>
+</html>

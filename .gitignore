@@ -1,0 +1,89 @@
+# 本地环境变量与私有配置（脱敏示例可以提交）
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.local.json
+*.local.yaml
+*.local.yml
+
+# 登录会话、Cookie、令牌与扫码临时文件
+session.json
+session.json.*
+*-session.json
+cookies.json
+cookies.txt
+cookies.sqlite*
+cookie.txt
+token.json
+tokens.json
+credentials.json
+secrets.json
+qrcode*.png
+qr-login*.png
+login-qr*.png
+
+# 私钥与证书容器
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# 播放历史、用户状态和本地数据库
+play-history.json
+playback-state.json
+now.json
+state.db*
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+
+# 缓存、日志与浏览器调试产物
+.cache/
+cache/
+logs/
+*.log
+*.har
+.playwright-mcp/
+playwright-report/
+test-results/
+.auth/
+browser-profile/
+
+# Go 构建产物与覆盖率报告
+/tui/qqmusic-tui
+/tui/qqmusic-tui.exe
+/tui/qqmusic-tui-*
+/bin/
+/dist/
+*.test
+coverage.out
+coverage.html
+
+# Python / Node 本地依赖
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+node_modules/
+
+# 编辑器、个人工具配置与系统杂项
+.claude/
+.codex/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~

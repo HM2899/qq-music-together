@@ -1,0 +1,45 @@
+# 安装清单唯一来源；构建脚本只把允许发布的文件放入 QQMUSIC_STAGE。
+name: qqmusic-tui
+arch: ${QQMUSIC_ARCH}
+platform: linux
+version: ${QQMUSIC_VERSION}
+release: "1"
+section: sound
+priority: optional
+maintainer: qqmusic-tui contributors
+license: GPL-3.0-only
+description: QQ 音乐终端播放器，附带 Python 标准库 API 后端
+contents:
+  - src: ${QQMUSIC_STAGE}/bin/qqmusic-tui
+    dst: /usr/bin/qqmusic-tui
+    expand: true
+    file_info:
+      mode: 0755
+  - src: ${QQMUSIC_STAGE}/share/qqmusic-tui
+    dst: /usr/share/qqmusic-tui
+    type: tree
+    expand: true
+  - src: ${QQMUSIC_STAGE}/share/licenses/qqmusic-tui
+    dst: /usr/share/licenses/qqmusic-tui
+    type: tree
+    expand: true
+# Python 在 Arch 上叫 python，其他三种体系叫 python3。
+# D-Bus 与 xdg-utils 仅影响可选桌面功能，不作硬依赖。
+overrides:
+  deb:
+    depends: [mpv, python3, ca-certificates]
+    suggests: [dbus, xdg-utils]
+  rpm:
+    depends: [mpv, python3, ca-certificates]
+    suggests: [dbus, xdg-utils]
+  archlinux:
+    depends: [mpv, python, ca-certificates]
+    suggests: ["dbus: MPRIS 桌面集成", "xdg-utils: 打开浏览器"]
+  apk:
+    depends: [mpv, python3, ca-certificates]
+rpm:
+  compression: gzip
+  buildhost: reproducible
+  group: Applications/Multimedia
+deb:
+  compression: gzip

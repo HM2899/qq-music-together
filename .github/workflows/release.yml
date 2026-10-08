@@ -1,0 +1,125 @@
+name: 发布 Linux 软件包
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: 校验版本与源码分支
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || exit 1
+          git merge-base --is-ancestor HEAD origin/main
+          printf 'version=%s\n' "${TAG#v}" >> "$GITHUB_OUTPUT"
+
+  checks:
+    needs: version
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  build:
+    needs: [version, checks]
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: tui/go.mod
+          cache-dependency-path: tui/go.sum
+      - name: 安装打包检查依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools binutils zstd python3
+          bash packaging/install-tools.sh "$RUNNER_TEMP/nfpm"
+      - name: 构建发行包
+        env:
+          NFPM: ${{ runner.temp }}/nfpm/nfpm
+          VERSION: ${{ needs.version.outputs.version }}
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: |
+          bash packaging/build.sh --arch "$BUILD_ARCH" --version "$VERSION" --commit "$GITHUB_SHA" --output dist
+          bash packaging/checksums.sh dist
+          bash packaging/verify.sh dist
+          rm dist/SHA256SUMS
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: release-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+
+  sources:
+    needs: [version, checks]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: tui/go.mod
+          cache-dependency-path: tui/go.sum
+      - name: 归档网页与对应源码
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: bash packaging/bundle.sh --version "$VERSION" --ref "$GITHUB_SHA" --output dist
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: release-sources
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: [version, build, sources]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+      - name: 核对完整性并发布
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          python3 -I -c 'from pathlib import Path; p=Path("dist"); expected={".deb":2,".rpm":2,".apk":2,".pkg.tar.zst":2,".tar.gz":4}; files=list(p.iterdir()); assert len(files)==12,files; assert all(sum(f.name.endswith(s) for f in files)==n for s,n in expected.items()),files'
+          bash packaging/checksums.sh dist
+          (cd dist && sha256sum -c SHA256SUMS)
+          if gh release view "$TAG" --json isDraft --jq .isDraft > "$RUNNER_TEMP/is-draft"; then
+            [[ "$(< "$RUNNER_TEMP/is-draft")" == true ]] || { printf '此版本已经发布，拒绝覆盖。\n' >&2; exit 1; }
+          else
+            gh release create "$TAG" --verify-tag --draft --title "$TAG" --notes 'Linux amd64 / arm64 安装包、网页演示与对应源码。安装说明见 README；这些是项目提供的软件包，不是发行版官方软件源。'
+          fi
+          gh release upload "$TAG" dist/* --clobber
+          gh release edit "$TAG" --draft=false

@@ -37,9 +37,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mpv ffmpeg python3 dbus gcc
           for cmd in mpv ffmpeg python3 dbus-daemon gcc; do command -v "$cmd"; done
-      - name: 网页与 Python 检查
+      - name: Python 检查
         run: |
-          node --check app.js
+          python3 -I -m unittest discover -s packaging -p 'test_*.py'
           python3 -I -c 'import ast,pathlib; ast.parse(pathlib.Path("tui/backend/qqmusic_api.py").read_text())'
           python3 -I -m unittest discover -s tui/backend -p 'test_*.py'
       - name: Go 检查与测试
@@ -84,6 +84,7 @@ jobs:
           BUILD_ARCH: ${{ matrix.arch }}
         run: |
           bash packaging/build.sh --arch "$BUILD_ARCH" --version 0.0.0 --commit "$GITHUB_SHA" --output dist
+          bash packaging/bundle.sh --version 0.0.0 --ref "$GITHUB_SHA" --output dist
           bash packaging/checksums.sh dist
           bash packaging/verify.sh dist
       - name: 安装包冒烟测试

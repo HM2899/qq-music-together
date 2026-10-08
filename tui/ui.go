@@ -1155,7 +1155,7 @@ func (m Model) commentsSortOrHot() string {
 }
 
 // toggleCommentPraise 给选中的评论点赞 / 取消点赞。
-// 照网页端的做法先乐观更新（数字和标记立刻变），失败再回滚。
+// 先乐观更新（数字和标记立刻变），失败再回滚。
 func (m *Model) toggleCommentPraise() tea.Cmd {
 	i := m.commentsList.cursor
 	if i < 0 || i >= len(m.comments) {

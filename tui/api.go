@@ -23,8 +23,8 @@ type Client struct {
 	python string // python3 可执行文件
 	script string // qqmusic_api.py 路径
 	// setupErr 在构造时就发现的问题（脚本/python 找不到）。
-	// 存下来而不是构造失败返回 error：这样 TUI 还能起来、能提示用户去哪儿找脚本，
-	// 也能继续用离线演示曲，而不是直接闪退。
+	// 存下来而不是构造失败返回 error：TUI 仍可启动并提示后端配置错误，
+	// 后续接口调用会返回该错误；测试可独立注入本地音频，不依赖后端。
 	setupErr error
 }
 

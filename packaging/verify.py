@@ -153,20 +153,16 @@ def package(path, version, arch, fmt):
 
 def bundle(path):
     content = members(archive(path))
-    source = "_source" in path.name
-    match = re.fullmatch(r"qqmusic-(?:together_([0-9.]+)_source|web_([0-9.]+))\.tar\.gz", path.name)
-    require(match, "无效源码/网页包名称")
-    prefix = ("qqmusic-together-" if source else "qqmusic-web-") + (match[1] or match[2]) + "/"
+    match = re.fullmatch(r"qqmusic-together_([0-9.]+)_source\.tar\.gz", path.name)
+    require(match, "无效源码包名称")
+    prefix = "qqmusic-together-" + match[1] + "/"
     require(all(n.startswith(prefix) for n in content), "归档顶层目录不一致")
     names = {n[len(prefix):] for n in content}
-    required = {"LICENSE", "THIRD_PARTY_NOTICES.md", "app.js", "index.html", "style.css"}
-    if source:
-        required |= {"tui/go.mod", "tui/go.sum", "tui/backend/qqmusic_api.py", "packaging/nfpm.yaml"}
-    require(required <= names, "源码/网页归档缺少必要文件")
+    required = {"LICENSE", "THIRD_PARTY_NOTICES.md", "README.md", "licenses/qmweb-sign-MIT.txt", "tui/go.mod", "tui/go.sum", "tui/main.go", "tui/backend/qqmusic_api.py", "packaging/nfpm.yaml"}
+    require(required <= names, "源码归档缺少必要文件")
     for name in names:
+        require(name not in {"app.js", "index.html", "style.css"} and not name.startswith("assets/"), f"源码归档包含已移除的网页资源：{name}")
         require(not re.search(r"(^|/)(\.git|\.env|session\.json|__pycache__|node_modules|.*\.db|.*\.log|qqmusic-tui)(/|$)", name), f"归档包含私有状态/二进制：{name}")
-        if not source:
-            require(name in required or name.startswith(("assets/", "licenses/")), f"网页清单越界：{name}")
 
 
 def main():

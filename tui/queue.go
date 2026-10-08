@@ -18,7 +18,7 @@ import (
 
 // startCurrent 播放 m.curIndex 指向的那首。
 //
-// 有 DirectURL 的（离线演示曲）直接丢给 mpv；真实曲目要先去 resolve 拿直链，
+// 测试通过 DirectURL 注入的本地音频直接丢给 mpv；真实曲目要先去 resolve 拿直链，
 // 那是异步的，所以这里只发命令。
 func (m *Model) startCurrent() tea.Cmd {
 	cur, ok := m.current()

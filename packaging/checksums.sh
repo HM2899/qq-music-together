@@ -9,7 +9,7 @@ files = sorted(p for p in root.iterdir() if p.name.startswith("qqmusic-") and p.
 if not files:
     raise SystemExit("没有发行文件")
 for p in files:
-    if p.is_symlink() or "\n" in p.name or "\\" in p.name:
+    if p.is_symlink() or p.name.startswith("qqmusic-web") or "\n" in p.name or "\\" in p.name:
         raise SystemExit(f"非法发行文件：{p.name}")
 text = "".join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n" for p in files)
 (root / "SHA256SUMS.tmp").write_text(text)

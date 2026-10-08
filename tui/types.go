@@ -19,11 +19,11 @@ type Track struct {
 	CoverURL string   `json:"coverUrl"`
 	Vip      bool     `json:"vip"`
 	Playable bool     `json:"playable"`
-	// DirectURL 只给离线演示曲用（SoundHelix 直链），不来自接口。
+	// DirectURL 用于测试注入本地音频路径，不来自接口。
 	// 非空就跳过 resolve 直接丢给 mpv。
 	DirectURL string `json:"-"`
 	// Lyrics 不来自列表接口，是拿到曲目之后单独调 lyrics 子命令填进来的
-	// （演示曲则自带）。挂在曲目上而不是单独存一份，切歌再切回来就不用重取。
+	// （测试 fixture 可直接注入）。挂在曲目上而不是单独存一份，切歌再切回来就不用重取。
 	Lyrics []Lyric `json:"-"`
 }
 

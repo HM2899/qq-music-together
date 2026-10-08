@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 用法：bundle.sh --version 0.1.0 --ref HEAD --output DIR
-# 网页与源码都取自同一个 Git 对象，不把工作区私有/未提交文件混入。
+# 源码取自指定 Git 对象，不把工作区私有/未提交文件混入。
 source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
 version= ref= output=
 while (($#)); do
@@ -19,9 +19,7 @@ output=$(cd -- "$output" && pwd)
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
 source_name=qqmusic-together_${version}_source.tar.gz
-web_name=qqmusic-web_${version}.tar.gz
-[[ ! -e $output/$source_name && ! -e $output/$web_name ]] || fail '拒绝覆盖已有源码或网页包'
+[[ ! -e $output/$source_name ]] || fail '拒绝覆盖已有源码包'
 git -C "$ROOT" archive --format=tar --prefix="qqmusic-together-$version/" "$commit" | gzip -n > "$work/$source_name"
-git -C "$ROOT" archive --format=tar --prefix="qqmusic-web-$version/" "$commit" -- index.html app.js style.css assets LICENSE THIRD_PARTY_NOTICES.md licenses | gzip -n > "$work/$web_name"
-mv -- "$work/$source_name" "$work/$web_name" "$output/"
-printf '已从 %s 生成源码与网页包\n' "$commit"
+mv -- "$work/$source_name" "$output/"
+printf '已从 %s 生成源码包\n' "$commit"

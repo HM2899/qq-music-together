@@ -155,7 +155,7 @@ func TestSearchErrorSurfaces(t *testing.T) {
 	_ = m.View() // 错误态也要能渲染
 }
 
-// 探索页：discover 返回后，云端曲目和离线演示曲同时在列表里。
+// 探索页：假后端的 discover 返回后，接口曲目出现在列表里。
 func TestExploreFlowEndToEnd(t *testing.T) {
 	m := fakeModel(t, PageExplore)
 

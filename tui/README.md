@@ -1,10 +1,8 @@
 # QQ音乐 TUI
 
-把 `qq-music-together/` 那个网页版（`index.html` + `app.js` + `style.css`）改成终端界面。
-原网页保留不动，这是并行的 Go 实现。
+使用 Go / Bubble Tea 编写的非官方 QQ 音乐终端播放器，提供七个页签，连接真实 QQ 音乐服务，不内置示例曲目。
 
-功能上与桌面版 Quickshell 客户端（`~/.config/quickshell/statindet/Modules/QQMusic/`）对齐：
-七个页签，复用桌面版后端接口与队列语义。真实后端已随仓库和安装包提供，无需安装 Quickshell；环境准备与 Linux 软件包安装见[项目说明](../README.md)。
+复用桌面版客户端的后端接口与队列语义。真实后端 `backend/qqmusic_api.py` 已随仓库和安装包提供，无需安装 Quickshell；环境准备与 Linux 软件包安装见[项目说明](../README.md)。
 
 ## 跑起来
 
@@ -99,10 +97,7 @@ SQLite 用的是纯 Go 的 `modernc.org/sqlite`，不需要 cgo。
 字母 `q`，不会退出程序；想播放结果要先按 `esc` 离开输入态，再按 `回车`——
 `]` 在输入框里只是个中括号字符，翻页要用 `Ctrl+F`。
 
-歌手那一类的 `回车` 是「按歌手名搜他的歌」而不是进歌手页：歌手的曲目列表接口
-`music.web_singer_info/GetSingerSongList` 实测只回 `500003/860100005`（这个签名问题和
-写接口无关——写接口不带签名也能通，见「明确不做」），目前只知道 `music.musichallSinger.SingerList`
-这一个歌手接口，拿不到曲目列表，所以退化成按名字搜。
+歌手那一类的 `回车` 是「按歌手名搜他的歌」，不是打开独立歌手详情页；当前未接入歌手曲目列表。接口签名与账号写操作以随附后端实现和服务端响应为准。
 
 登录层（按 `L`）：`r` 重新生成二维码、`t` 切换 QQ / 微信、`o` 用系统看图器打开图片、`esc` 关闭。
 扫码成功后登录层自动关闭。已登录时按 `L` 是账号页：`s` 扫码换号、`x` 退出登录、`esc` 关闭。
@@ -133,7 +128,10 @@ SQLite 用的是纯 Go 的 `modernc.org/sqlite`，不需要 cgo。
 | `login.go` / `qr.go` | 扫码登录状态机 + PNG → 半块字符二维码 |
 | `mpv.go` | mpv 播放引擎，走 JSON IPC（unix socket） |
 | `publish.go` | 把当前播放状态写给桌面 shell 的顶栏歌词 |
-| `fixtures_test.go` | 测试用的假曲目与假探索页（`songs.go` 已删，产品里没有内置曲目了） |
+| `fixtures_test.go` / `testdata/` | 离线测试用的假曲目、歌词、探索页与接口响应，不是产品内置曲库 |
+| `backend/qqmusic_api.py` | 随附的真实 QQ 音乐后端，仅使用 Python 标准库 |
+| `../packaging/` | 双架构 Linux 软件包、源码归档与校验工具 |
+| `../.github/workflows/` | CI 检查及 tag 发布流程 |
 
 播放和进度是**真实**的（mpv 的 `time-pos` / `duration`），歌词按真实播放位置滚动。
 直链有时效，每次播放都会重新 `resolve`，不做缓存。
@@ -182,10 +180,9 @@ QQMUSIC_TUI_NO_MPRIS=1 ./qqmusic-tui
 |---|---|
 | 写 `play-history.json` / `playback-state.json` | 刻意不碰后端的共享状态文件（`session.json` 除外，那是登录机制本身） |
 | 随机播放 / 单曲循环模式切换 | 当前上下首按队列顺序切换，到边界绕回，未提供模式切换 |
-| 网页房间与聊天同步 | 网页与 TUI 是独立实现，目前不互联 |
 | 注册进 `MediaManager` | 避免在未播放时接管桌面媒体控制；通过独立 MPRIS 服务提供控制 |
 
-评论发送、点赞、歌单写操作和音质选择已在 TUI 接入；是否成功取决于兼容后端、账号权限与服务端响应。真实 API 脚本不在本仓库内，接口签名和 `songType` 等细节以所用后端实现及歌曲数据为准，不应把某次调试结论当成固定协议规则。
+评论发送、点赞、歌单写操作和音质选择已在 TUI 接入；是否成功取决于兼容后端、账号权限与服务端响应。真实 API 脚本随仓库及安装包提供，接口签名和 `songType` 等细节以随附后端实现及歌曲数据为准，不应把某次调试结论当成固定协议规则。
 
 ## 测试
 

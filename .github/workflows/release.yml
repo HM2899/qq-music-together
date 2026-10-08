@@ -84,10 +84,14 @@ jobs:
         with:
           go-version-file: tui/go.mod
           cache-dependency-path: tui/go.sum
-      - name: 归档网页与对应源码
+      - name: 安装源码检查依赖
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
+      - name: 归档与检查对应源码
         env:
           VERSION: ${{ needs.version.outputs.version }}
-        run: bash packaging/bundle.sh --version "$VERSION" --ref "$GITHUB_SHA" --output dist
+        run: |
+          bash packaging/bundle.sh --version "$VERSION" --ref "$GITHUB_SHA" --output dist
+          bash packaging/verify.sh dist
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: release-sources
@@ -113,13 +117,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          python3 -I -c 'from pathlib import Path; p=Path("dist"); expected={".deb":2,".rpm":2,".apk":2,".pkg.tar.zst":2,".tar.gz":4}; files=list(p.iterdir()); assert len(files)==12,files; assert all(sum(f.name.endswith(s) for f in files)==n for s,n in expected.items()),files'
+          python3 -I -c 'from pathlib import Path; p=Path("dist"); expected={".deb":2,".rpm":2,".apk":2,".pkg.tar.zst":2,".tar.gz":3}; files=list(p.iterdir()); assert len(files)==11,files; assert all(sum(f.name.endswith(s) for f in files)==n for s,n in expected.items()),files'
           bash packaging/checksums.sh dist
           (cd dist && sha256sum -c SHA256SUMS)
           if gh release view "$TAG" --json isDraft --jq .isDraft > "$RUNNER_TEMP/is-draft"; then
             [[ "$(< "$RUNNER_TEMP/is-draft")" == true ]] || { printf '此版本已经发布，拒绝覆盖。\n' >&2; exit 1; }
           else
-            gh release create "$TAG" --verify-tag --draft --title "$TAG" --notes 'Linux amd64 / arm64 安装包、网页演示与对应源码。安装说明见 README；这些是项目提供的软件包，不是发行版官方软件源。'
+            gh release create "$TAG" --verify-tag --draft --title "$TAG" --notes 'QQ 音乐 TUI：Linux amd64 / arm64 安装包、便携包与对应源码，随附真实 Python 后端。安装说明见 README；这些是项目提供的软件包，不是发行版官方软件源。'
           fi
           gh release upload "$TAG" dist/* --clobber
           gh release edit "$TAG" --draft=false

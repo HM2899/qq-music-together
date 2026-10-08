@@ -91,7 +91,7 @@ func (m *Model) cycleQuality() tea.Cmd {
 
 	cur, ok := m.current()
 	if !ok || cur.DirectURL != "" || cur.SongMid == "" || m.api == nil || m.mpv == nil {
-		return nil // 没在放、或者是离线演示曲：下一首起生效
+		return nil // 无法重新解析或测试注入了本地音频：新音质在后续解析时生效
 	}
 	// 记下接着放的位置，解析回来后在这个位置载入（见 onResolve）。
 	m.resumeAt = m.displayPos()
